@@ -18,8 +18,8 @@ def load_img(filepath):
     return img
 
 def read_image(directory):
-    filename = listdir(directory)
-    return filename
+    image_filename = [join(directory,x) for x in listdir(directory)]
+    return image_filename
 def read_image_label(directory):
     filename = sorted(listdir(directory))
     #print(filename[-1])
@@ -52,32 +52,4 @@ class DatasetFromFolder1(data.Dataset):
         print (len(self.label_filename))
         return len(self.train_filename)
 
-class DatasetFromFolder2(data.Dataset):
-    def __init__(self, test_dir, label_dir, input_transform=None, target_transform=None):
-        super(DatasetFromFolder2, self).__init__()
-        self.test_filename = read_image_label(test_dir)
-        #print(self.test_filename)
-        self.label_filename = read_image_label(label_dir)
-        #print(self.label_filename)
-        self.input_transform = input_transform
-        self.target_transform = target_transform
-
-
-    def __getitem__(self, index):
-        input = load_img(self.test_filename[index])
-        #print(self.test_filename[index])
-        target = load_img(self.label_filename[index])
-        #print(self.label_filename[index])
-        # target = load_img(self.label_filename[index])
-        if self.target_transform:
-            target = self.target_transform(target)
-        if self.input_transform:
-            input = self.input_transform(input)
-        # print(self.train_filename[index]+self.label_filename[index])
-        return input, target
-
-    def __len__(self):
-        print (len(self.test_filename))
-        print (len(self.label_filename))
-        return len(self.test_filename)
 

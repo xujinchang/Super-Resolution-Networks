@@ -4,7 +4,7 @@ from six.moves import urllib
 import tarfile
 from torchvision.transforms import Compose, CenterCrop, ToTensor, Scale
 
-from dataset import DatasetFromFolder1,DatasetFromFolder2
+from dataset import DatasetFromFolder1
 
 
 
@@ -17,14 +17,14 @@ from dataset import DatasetFromFolder1,DatasetFromFolder2
 def input_transform(crop_size, upscale_factor):
     crop_size = calculate_valid_crop_size(crop_size, upscale_factor)
     return Compose([
-        Scale(crop_size // upscale_factor),
+        Scale((crop_size // upscale_factor,crop_size // upscale_factor)),
         ToTensor(),
         ])
 
-def target_transform(crop_size):
+def target_transform(crop_size, upscale_factor):
     crop_size = calculate_valid_crop_size(crop_size, upscale_factor)
     return Compose([
-                Scale(crop_size),
+                Scale((crop_size,crop_size)),
                 ToTensor(),
                 ])
 

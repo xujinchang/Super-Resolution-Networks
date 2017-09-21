@@ -1,4 +1,3 @@
-from __future__ import print_function
 import argparse, os
 import torch
 import torch.backends.cudnn as cudnn
@@ -10,7 +9,7 @@ from torchvision.transforms import ToTensor
 from torchvision import models
 import torch.utils.model_zoo as model_zoo
 from srresnet import Net
-
+from data import get_training_set, get_test_set
 
 #training settings
 parser = argparse.ArgumentParser(description='PyTorch Super Res Example')
@@ -27,6 +26,7 @@ parser.add_argument('--threads', type=int, default=4, help='number of threads fo
 parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
 parser.add_argument("--momentum", default=0.9, type=float, help="Momentum, Default: 0.9")
 parser.add_argument("--weight-decay", "--wd", default=0, type=float, help="weight decay, Default: 0")
+parser.add_argument("--resume", default="", type=str, help="Path to checkpoint (default: none)")
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 parser.add_argument("--vgg_loss", action="store_true", help="Use content loss?")
 opt = parser.parse_args()
@@ -43,31 +43,30 @@ if cuda:
 
 print('===> Loading datasets')
 train_set = get_training_set(opt.train_dir, opt.label_dir)
-test_set = get_test_set(opt.train_dir, opt.label_dir)
+# test_set = get_test_set(opt.train_dir, opt.label_dir)
 #train_set = get_training_set('/localSSD/zhaoyu/super_resolution/DIV2K_train_LR_bicubic/X2', '/localSSD/zhaoyu/super_resolution/DIV2K_train_HR')
 #test_set = get_test_set('/localSSD/zhaoyu/super_resolution/DIV2K_train_LR_bicubic/X2', '/localSSD/zhaoyu/super_resolution/DIV2K_train_HR')
 training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
-testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
+# testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
 # print('===> Building model')
 
 if opt.vgg_loss:
 	print('===> Loading VGG model')
-    netVGG = models.vgg19()
-    netVGG.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/vgg19-dcbb9e9d.pth'))
-    class _content_model(nn.Module):
-        def __init__(self):
-            super(_content_model, self).__init__()
-            self.feature = nn.Sequential(*list(netVGG.features.children())[:-1])
-                
+	netVGG = models.vgg19()
+	netVGG.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/vgg19-dcbb9e9d.pth'))
+	class _content_model(nn.Module):
+		def __init__(self):
+			super(_content_model, self).__init__()
+			self.feature = nn.Sequential(*list(netVGG.features.children())[:-1])
         def forward(self, x):
-            out = self.feature(x)
-            return out
-
-    netContent = _content_model()
+        	out = self.feature(x)
+        	return out
+	netContent = _content_model()
 
 print("===> Building model")
 
 model = Net(opt.upscale_factor)
+print model
 criterion1 = nn.MSELoss()
 device_id = 1
 
@@ -75,7 +74,7 @@ if cuda:
     model = model.cuda(device_id)
     criterion1 = criterion1.cuda(device_id)
     if opt.vgg_loss:
-            netContent = netContent.cuda() 
+            netContent = netContent.cuda()
 
 if opt.resume:
     if os.path.isfile(opt.resume):
@@ -85,30 +84,28 @@ if opt.resume:
         model.load_state_dict(checkpoint["model"].state_dict())
     else:
         print("=> no checkpoint found at '{}'".format(opt.resume))
-            
+
     # optionally copy weights from a checkpoint
 if opt.pretrained:
 	if os.path.isfile(opt.pretrained):
 		print("=> loading model '{}'".format(opt.pretrained))
-        weights = torch.load(opt.pretrained)
-        model.load_state_dict(weights['model'].state_dict())
-    else:
-        print("=> no model found at '{}'".format(opt.pretrained))
+		weights = torch.load(opt.pretrained)
+		model.load_state_dict(weights['model'].state_dict())
+	else:
+		print("=> no model found at '{}'".format(opt.pretrained))
 
 optimizer = optim.Adam(model.parameters(), lr=opt.lr)
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10"""
     lr = opt.lr * (0.1 ** (epoch // opt.step))
-    return lr 
+    return lr
 
 def train(training_data_loader, optimizer, model, criterion, epoch):
-	lr = adjust_learning_rate(optimizer, epoch-1)
-    
+    lr = adjust_learning_rate(optimizer, epoch-1)
     for param_group in optimizer.param_groups:
-        param_group["lr"] = lr  
-
-    print "epoch =", epoch,"lr =",optimizer.param_groups[0]["lr"]
+        param_group["lr"] = lr
+    print "epoch =",epoch,"lr =",optimizer.param_groups[0]["lr"]
     model.train()
 
     for iteration, batch in enumerate(training_data_loader, 1):
@@ -121,19 +118,19 @@ def train(training_data_loader, optimizer, model, criterion, epoch):
         optimizer.zero_grad()
         out = model(input)
         loss = criterion(out, target)
-       
+
         if opt.vgg_loss:
-        	content_input = netContent(output)
+            content_input = netContent(out)
             content_target = netContent(target)
             content_target = content_target.detach()
             content_loss = criterion(content_input, content_target)
-        
+
         optimizer.zero_grad()
 
         if opt.vgg_loss:
-        	netContent.zero_grad()
+            netContent.zero_grad()
             content_loss.backward(retain_variables=True)
-        
+
         loss.backward()
         optimizer.step()
 
@@ -150,13 +147,13 @@ def save_checkpoint(model, epoch):
         os.makedirs("model/")
 
     torch.save(state, model_out_path)
-        
+
     print("Checkpoint saved to {}".format(model_out_path))
 
 
 
 for epoch in range(1, opt.nEpochs + 1):
-        train(training_data_loader, optimizer, model, criterion, epoch)
+        train(training_data_loader, optimizer, model, criterion1, epoch)
         save_checkpoint(model, epoch)
 
 
