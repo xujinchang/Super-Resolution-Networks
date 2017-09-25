@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 from torchvision import models
 import torch.utils.model_zoo as model_zoo
-from resnet7 import Net
+from srresnet import Net
 from data import get_training_set, get_test_set
 
 #training settings
@@ -51,17 +51,21 @@ training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, ba
 # print('===> Building model')
 
 if opt.vgg_loss:
-	print('===> Loading VGG model')
-	netVGG = models.vgg19()
-	netVGG.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/vgg19-dcbb9e9d.pth'))
-	class _content_model(nn.Module):
-		def __init__(self):
-			super(_content_model, self).__init__()
-			self.feature = nn.Sequential(*list(netVGG.features.children())[:-1])
+    print('===> Loading VGG model')
+    netVGG = models.vgg19()
+    netVGG.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/vgg19-dcbb9e9d.pth'))
+    # netVGG = torch.load('/home/xujinchang/.torch/models/vgg19-dcbb9e9d.pth')
+    # print checkpoint
+
+    # netVGG.load_state_dict('/home/xujinchang/.torch/models/vgg19-dcbb9e9d.pth')
+    class _content_model(nn.Module):
+        def __init__(self):
+            super(_content_model, self).__init__()
+            self.feature = nn.Sequential(*list(netVGG.features.children())[:-1])
         def forward(self, x):
-        	out = self.feature(x)
-        	return out
-	netContent = _content_model()
+            out = self.feature(x)
+            return out
+    netContent = _content_model()
 
 print("===> Building model")
 
@@ -73,7 +77,7 @@ if cuda:
     model = model.cuda(device_id)
     criterion1 = criterion1.cuda(device_id)
     if opt.vgg_loss:
-            netContent = netContent.cuda()
+            netContent = netContent.cuda(device_id)
 
 if opt.resume:
     if os.path.isfile(opt.resume):
@@ -86,12 +90,12 @@ if opt.resume:
 
     # optionally copy weights from a checkpoint
 if opt.pretrained:
-	if os.path.isfile(opt.pretrained):
-		print("=> loading model '{}'".format(opt.pretrained))
-		weights = torch.load(opt.pretrained)
-		model.load_state_dict(weights['model'].state_dict())
-	else:
-		print("=> no model found at '{}'".format(opt.pretrained))
+    if os.path.isfile(opt.pretrained):
+        print("=> loading model '{}'".format(opt.pretrained))
+        weights = torch.load(opt.pretrained)
+        model.load_state_dict(weights['model'].state_dict())
+    else:
+        print("=> no model found at '{}'".format(opt.pretrained))
 
 optimizer = optim.Adam(model.parameters(), lr=opt.lr)
 
@@ -100,7 +104,7 @@ def adjust_learning_rate(optimizer, epoch):
     lr = opt.lr * (0.1 ** (epoch // opt.step))
     return lr
 
-def train(training_data_loader, optimizer, model, criterion, epoch):
+def train(training_data_loader, optimizer, model, netContent, criterion, epoch):
     lr = adjust_learning_rate(optimizer, epoch-1)
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr
@@ -140,10 +144,10 @@ def train(training_data_loader, optimizer, model, criterion, epoch):
                 print("===> Epoch[{}]({}/{}): Loss: {:.10f}".format(epoch, iteration, len(training_data_loader), loss.data[0]))
 
 def save_checkpoint(model, epoch):
-    model_out_path = "model_3/" + "model_epoch_{}.pth".format(epoch)
+    model_out_path = "model_2_vgg/" + "model_epoch_{}.pth".format(epoch)
     state = {"epoch": epoch ,"model": model}
-    if not os.path.exists("model_3/"):
-        os.makedirs("model_3/")
+    if not os.path.exists("model_2_vgg/"):
+        os.makedirs("model_2_vgg/")
 
     torch.save(state, model_out_path)
 
@@ -152,7 +156,7 @@ def save_checkpoint(model, epoch):
 
 
 for epoch in range(1, opt.nEpochs + 1):
-        train(training_data_loader, optimizer, model, criterion1, epoch)
+        train(training_data_loader, optimizer, model, netContent, criterion1, epoch)
         save_checkpoint(model, epoch)
 
 
