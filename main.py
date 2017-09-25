@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 from torchvision import models
 import torch.utils.model_zoo as model_zoo
-from srresnet import Net
+from resnet7 import Net
 from data import get_training_set, get_test_set
 
 #training settings
@@ -68,8 +68,7 @@ print("===> Building model")
 model = Net(opt.upscale_factor)
 print model
 criterion1 = nn.MSELoss()
-device_id = 1
-
+device_id = 3
 if cuda:
     model = model.cuda(device_id)
     criterion1 = criterion1.cuda(device_id)
@@ -141,10 +140,10 @@ def train(training_data_loader, optimizer, model, criterion, epoch):
                 print("===> Epoch[{}]({}/{}): Loss: {:.10f}".format(epoch, iteration, len(training_data_loader), loss.data[0]))
 
 def save_checkpoint(model, epoch):
-    model_out_path = "model/" + "model_epoch_{}.pth".format(epoch)
+    model_out_path = "model_3/" + "model_epoch_{}.pth".format(epoch)
     state = {"epoch": epoch ,"model": model}
-    if not os.path.exists("model/"):
-        os.makedirs("model/")
+    if not os.path.exists("model_3/"):
+        os.makedirs("model_3/")
 
     torch.save(state, model_out_path)
 

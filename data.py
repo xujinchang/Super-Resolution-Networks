@@ -43,7 +43,7 @@ def get_training_set(dir1,dir2):
     train_dir = dir1
     label_dir = dir2
     return DatasetFromFolder1(train_dir, label_dir,
-            input_transform=input_transform(96,4),
-            target_transform=target_transform(96,4))
+            input_transform=input_transform(128,3),
+            target_transform=target_transform(128,3))
 
 
