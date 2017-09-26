@@ -14,8 +14,8 @@ def is_image_file(filename):
 def load_img(filepath):
     img = Image.open(filepath)
     #img = Image.open(filepath).convert('YCbCr')
-    #y, cb, cr = img.split()
-    return img
+    y, cb, cr = img.split()
+    return y
 
 def read_image(directory):
     image_filename = [join(directory,x) for x in listdir(directory)]
