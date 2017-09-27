@@ -115,7 +115,7 @@ def train(training_data_loader, optimizer, model, criterion, epoch):
         loss = loss_x2       
         optimizer.zero_grad()
         
-        loss_x2.backward(retain_variables=True)
+        loss.backward(retain_variables=True)
         
         # loss_x4.backward()
 
