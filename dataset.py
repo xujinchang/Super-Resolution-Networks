@@ -14,8 +14,9 @@ def is_image_file(filename):
 def load_img(filepath):
     img = Image.open(filepath)
     #img = Image.open(filepath).convert('YCbCr')
-    y, cb, cr = img.split()
-    return y
+    # y, cb, cr = img.split()
+    # return y
+    return img
 
 def read_image(directory):
     image_filename = [join(directory,x) for x in listdir(directory)]
@@ -32,20 +33,23 @@ def read_image_label(directory):
 
 
 class DatasetFromFolder1(data.Dataset):
-    def __init__(self, train_dir, label_dir, input_transform=None, target_transform=None):
+    def __init__(self, train_dir, label_dir, input_transform=None, target_transform1=None,target_transform2=None):
         super(DatasetFromFolder1, self).__init__()
         self.train_filename = read_image(train_dir)
         self.label_filename = self.train_filename
         self.input_transform = input_transform
-        self.target_transform = target_transform
+        self.target_transform1 = target_transform1
+        self.target_transform2 = target_transform2
     def __getitem__(self, index):
         input = load_img(self.train_filename[index])
         target = load_img(self.label_filename[index])
-        if self.target_transform:
-            target = self.target_transform(target)
+        if self.target_transform1:
+            target1 = self.target_transform1(target)
+        if self.target_transform2:
+            target2 = self.target_transform2(target)
         if self.input_transform:
             input = self.input_transform(input) #downsample
-        return input, target
+        return input, target1,target2
 
     def __len__(self):
         print (len(self.train_filename))
@@ -53,3 +57,25 @@ class DatasetFromFolder1(data.Dataset):
         return len(self.train_filename)
 
 
+class DatasetFromFolder2(data.Dataset):
+    def __init__(self, train_dir, label_dir, input_transform=None, target_transform1=None):
+        super(DatasetFromFolder2, self).__init__()
+        self.train_filename = read_image(train_dir)
+        self.label_filename = self.train_filename
+        self.input_transform = input_transform
+        self.target_transform1 = target_transform1
+       
+    def __getitem__(self, index):
+        input = load_img(self.train_filename[index])
+        target = load_img(self.label_filename[index])
+        if self.target_transform1:
+            target1 = self.target_transform1(target)
+
+        if self.input_transform:
+            input = self.input_transform(input) #downsample
+        return input, target1
+
+    def __len__(self):
+        print (len(self.train_filename))
+        print (len(self.label_filename))
+        return len(self.train_filename)
